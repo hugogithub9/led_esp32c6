@@ -42,30 +42,6 @@ impl Rgb {
     pub fn new(r: u8, g: u8, b: u8) -> Self {
         Self { r, g, b }
     }
-    //     /// Converts hue, saturation, value to RGB
-    //     pub fn from_hsv(h: u32, s: u32, v: u32) -> Result<Self> {//convertit HSV en RGB pour fairedes effets colores naturels
-    //         if h > 360 || s > 100 || v > 100 {
-    //             bail!("The given HSV values are not in valid range");
-    //         }
-    //         let s = s as f64 / 100.0;
-    //         let v = v as f64 / 100.0;
-    //         let c = s * v;
-    //         let x = c * (1.0 - (((h as f64 / 60.0) % 2.0) - 1.0).abs());
-    //         let m = v - c;
-    //         let (r, g, b) = match h {
-    //             0..=59 => (c, x, 0.0),
-    //             60..=119 => (x, c, 0.0),
-    //             120..=179 => (0.0, c, x),
-    //             180..=239 => (0.0, x, c),
-    //             240..=299 => (x, 0.0, c),
-    //             _ => (c, 0.0, x),
-    //         };
-    //         Ok(Self {
-    //             r: ((r + m) * 255.0) as u8,
-    //             g: ((g + m) * 255.0) as u8,
-    //             b: ((b + m) * 255.0) as u8,
-    //         })
-    //     }
 }
 
 impl From<Rgb> for u32 {
@@ -139,85 +115,6 @@ mod Generator {
     }
 }
 
-mod Activator {
-    use crate::neopixel;
-    use crate::Rgb;
-    use esp_idf_hal::{
-        rmt::TxRmtDriver, //utilise canal RMT pour piloter la LED RGB
-    };
-    pub struct ActivatorState {
-        sigma: f64,
-        clock: f64,
-        count: usize,
-        tx: TxRmtDriver<'static>,
-    }
-
-    impl ActivatorState {
-        pub fn new(tx: TxRmtDriver<'static>) -> Self {
-            Self {
-                sigma: 0.0,
-                clock: 0.0,
-                count: 0,
-                tx,
-            }
-        }
-    }
-
-    xdevs::component!(
-        ident = Activator,
-        input = {
-        input<bool>,
-        },
-        state = ActivatorState,
-    );
-
-    impl xdevs::Atomic for Activator {
-        fn delta_int(state: &mut Self::State) {
-            state.clock += state.sigma;
-            state.sigma = f64::INFINITY;
-        }
-
-        fn lambda(state: &Self::State, output: &mut Self::Output) {}
-
-        fn ta(state: &Self::State) -> f64 {
-            state.sigma
-        }
-
-        fn delta_ext(state: &mut Self::State, e: f64, input: &Self::Input) {
-            state.sigma -= e;
-            state.clock += e;
-
-            let items = input.input.get_values();
-            let values = items;
-
-            for value in values.iter() {
-                if *value {
-                    println!("LED BLUE");
-                    //FreeRtos::delay_ms(2000); //att 2s
-                    //line to change LED state :
-                    neopixel(Rgb::new(255, 0, 255), &mut state.tx).unwrap(); //envoie du bleu a 100% de luminosite (valeur max 255)
-                } else {
-                    println!("LED RED");
-                    //FreeRtos::delay_ms(2000); //att 2s
-                    //line to change LED state:
-                    neopixel(Rgb::new(125, 100, 0), &mut state.tx).unwrap(); //envoie du rouge a 100% de luminosite (valeur max 255)
-                }
-            }
-        }
-    }
-}
-
-xdevs::component!(
-    ident = LED,
-    components = {
-        generator: Generator::Generator,
-        activator: Activator::Activator,
-    },
-    couplings = {
-        generator.output -> activator.input,
-    }
-);
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     use crate::neopixel;
     esp_idf_svc::sys::link_patches();
@@ -233,29 +130,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut tx = TxRmtDriver::new(channel, led, &config)?; //initialise pilote de transmission : channel0, broche gpio8, config celle juste creer
 
     // 3 seconds white at 10% brightness
-    neopixel(Rgb::new(25, 25, 25), &mut tx)?; //envoie du blanc a 10% de luminosite (valeur max 255)
+    neopixel(Rgb::new(0, 200, 0), &mut tx)?; //envoie du blanc a 10% de luminosite (valeur max 255)
     FreeRtos::delay_ms(3000); //att 3s
 
-    let period = 3.;
+    let period = 1.5;
 
     let generator = Generator::Generator::new(Generator::GeneratorState::new(period));
-    let activator = Activator::Activator::new(Activator::ActivatorState::new(tx));
-    let led = LED::new(generator, activator);
 
-    let mut simulator = xdevs::simulator::Simulator::new(led);
+    let mut simulator = xdevs::simulator::Simulator::new(generator);
 
     simulator.simulate_rt(
         //start,stop
         0.0,
         60.0,
         xdevs::simulator::std::sleep(0.0, 1.0, None),
-        |_| {}, //hardware
+        |output| {
+            if output.output.get_values()[0] {
+                neopixel(Rgb::new(0, 0, 255), &mut tx).unwrap();
+            } else {
+                neopixel(Rgb::new(255, 0, 0), &mut tx).unwrap();
+            }
+        }, //hardware
     );
-    /*
-    simulator.simulate_vt( //start,stop
-        0.0,
-        60.0,
-    );
-    */
+    neopixel(Rgb::new(0, 100, 100), &mut tx).unwrap();
+    println!("Goodbye, world!");
+
     Ok(())
 }

@@ -20,9 +20,15 @@ opt-level = "z"
 [features]
 default = ["std"]
 std = ["esp-idf-svc/alloc", "esp-idf-svc/binstart", "esp-idf-svc/std"]
-embassy = ["esp-idf-svc/embassy-sync", "esp-idf-svc/critical-section", "esp-idf-svc/embassy-time-driver"]
 
 experimental = ["esp-idf-svc/experimental"]
+
+
+
+[package.metadata.docs.rs]
+features = ["esp32c6"]
+targets  = ["riscv32imac-unknown-none-elf"]
+
 
 [dependencies]
 xdevs-no-std = {version="0.2.1", features=["std"] }
@@ -30,7 +36,14 @@ rand="0.8.5"
 
 log = { version = "0.4", default-features = false }
 anyhow = "1"
-esp-idf-svc = { version = "0.48", default-features = false }
+
+esp-idf-hal = {version="0.45.2", features =["rmt-legacy"]}
+esp-idf-svc = "0.51.0"
+esp-hal-smartled = {version ="0.14.0", features = ["esp32c6"]}
+smart-leds = "0.4.0"
+
+
+[dev-dependencies]
 
 
 [build-dependencies]
