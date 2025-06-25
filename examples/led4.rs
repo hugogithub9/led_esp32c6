@@ -138,12 +138,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let generator = Generator::Generator::new(Generator::GeneratorState::new(period));
 
     let mut simulator = xdevs::simulator::Simulator::new(generator);
+    let config = xdevs::simulator::Config::new(0.0, 60.0, 1.0, None);
 
     simulator.simulate_rt(
-        //start,stop
-        0.0,
-        60.0,
-        xdevs::simulator::std::sleep(0.0, 1.0, None),
+        &config,
+        xdevs::simulator::std::sleep(&config),
         |output| {
             if output.output.get_values()[0] {
                 neopixel(Rgb::new(0, 0, 255), &mut tx).unwrap();

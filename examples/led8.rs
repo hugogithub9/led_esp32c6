@@ -1,4 +1,4 @@
-//same model as led6.rs but we will code the comportment of the real button (not a simulation anymore)
+//same model as led7.rs but model button doesn't exist anymore it is an input function
 
 use std::time::{Duration, SystemTime}; //pour attendre entre chaque couleur
 
@@ -66,17 +66,18 @@ impl From<Rgb> for u32 {
 }
 
 pub fn input_handler(
-    button: PinDriver<'static, Gpio14, Input>,
+    button: PinDriver<'static, Gpio14, Input>, //take the nutton pin in input
 ) -> impl FnMut(Duration, &mut ControllerInput) {
+    //return fct with 2 arg : Duration and Input
     // puedes añadir todo lo que quieras de configuración
-    let mut n_times = 0;
-    let mut pressed = false;
+    let mut n_times = 0; //count how many time fct called
+    let mut pressed = false; //state of button
 
     //creation input
 
     move |duration, input| {
         // calcular en que instante hay que salir
-        let timeout = SystemTime::now() + duration;
+        let timeout = SystemTime::now() + duration; //calculate the time we stop to look at button
         println!("function called {timeout:?}");
         // mientras no haya que salir,
         while SystemTime::now() < timeout {
@@ -95,7 +96,7 @@ pub fn input_handler(
                 break;
             }
 
-            FreeRtos::delay_ms(1);
+            FreeRtos::delay_ms(1); //prevent polling let other task
         }
 
         n_times += 1;
@@ -226,12 +227,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //let buttoncontroller = ButtonController::new(controller);
 
     let mut simulator = xdevs::simulator::Simulator::new(controller);
+    let config = xdevs::simulator::Config::new(0.0, 60.0, 1.0, None);
 
     simulator.simulate_rt(
-        //start,stop
-        0.0,
-        60.0,
-        xdevs::simulator::std::wait_event(0.0, 1.0, None, ihandler),
+        &config,
+        xdevs::simulator::std::wait_event(&config, ihandler),
         |output| {
             let values = output.color.get_values();
 

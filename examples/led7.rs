@@ -243,12 +243,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let buttoncontroller = ButtonController::new(button, controller);
 
     let mut simulator = xdevs::simulator::Simulator::new(buttoncontroller);
+    let config = xdevs::simulator::Config::new(0.0, 60.0, 1.0, None);
 
     simulator.simulate_rt(
-        //start,stop
-        0.0,
-        60.0,
-        xdevs::simulator::std::sleep(0.0, 1.0, None),
+        &config,
+        xdevs::simulator::std::sleep(&config),
         |output| {
             let values = output.color.get_values();
 
